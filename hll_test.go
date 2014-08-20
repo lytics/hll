@@ -3,7 +3,6 @@ package hll
 import (
 	"fmt"
 	"math"
-
 	"testing"
 	"time"
 
@@ -87,4 +86,45 @@ func TestEstimateBias(t *testing.T) {
 	// if estimate is not in the estimated range, return max bias
 	max_bias := h_four.estimateBias(80.00)
 	assert.Equal(t, max_bias, -1.7606)
+}
+
+func TestCombine(t *testing.T) {
+	testCases := []struct {
+		p, pPrime      uint
+		count1, count2 int
+		shouldBeSparse bool
+	}{
+		{12, 25, 50, 100, true},
+		{12, 25, 5000, 10000, false},
+		{12, 25, 5, 10000, false},
+		{12, 25, 10000, 5, false},
+	}
+
+	for i, testCase := range testCases {
+		inputs1 := randUint64s(t, testCase.count1)
+		inputs2 := randUint64s(t, testCase.count2)
+
+		hll1 := NewHll(testCase.p, testCase.pPrime)
+		for _, x := range inputs1 {
+			hll1.Add(x)
+		}
+
+		hll2 := NewHll(testCase.p, testCase.pPrime)
+		for _, x := range inputs2 {
+			hll2.Add(x)
+		}
+
+		hll1.Combine(hll2)
+		if testCase.shouldBeSparse != hll1.isSparse {
+			t.Errorf("Testcase %d: expected isSparse %v but was %v", i, testCase.shouldBeSparse,
+				hll1.isSparse)
+		}
+
+		expectedCard := float64(len(inputs1) + len(inputs2))
+		estimatedCard := float64(hll1.Cardinality())
+		wrongness := math.Abs(estimatedCard-expectedCard)/estimatedCard - 1
+		if wrongness >= 0.05 {
+			t.Errorf("Testcase %d: cardinality wrongness %v was too high", i, wrongness)
+		}
+	}
 }
