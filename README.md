@@ -15,3 +15,8 @@ implementing the algorithm described in the paper as directly as possible.
 
 The HyperLogLog++ paper is available at 
 [here](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/40671.pdf)
+
+Instructions
+------------
+
+See the [docs](http://godoc.org/github.com/lytics/hll).
