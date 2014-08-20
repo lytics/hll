@@ -1,7 +1,6 @@
 package hll
 
 import (
-	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ func TestAddNormal(t *testing.T) {
 
 	h.addNormal(value)
 	h.addNormal(value2)
-	assert.Equal(t, h.M.Get(uint64(register)), rho(value))
+	assert.Equal(t, h.bigM.Get(uint64(register)), rho(value))
 }
 
 // Check to make sure that the temp set gets merged when it's supposed to
@@ -72,7 +71,7 @@ func TestCardinality(t *testing.T) {
 
 		calculatedError := math.Abs(float64(card)-float64(count)) / float64(count)
 		assert.T(t, calculatedError < 0.15)
-		fmt.Printf("\nActual Cardinality: %d\n Estimated Cardinality: %d\nError: %v\nTime Elapsed: %v\n\n", count, card, calculatedError, endTime)
+		//	fmt.Printf("\nActual Cardinality: %d\n Estimated Cardinality: %d\nError: %v\nTime Elapsed: %v\n\n", count, card, calculatedError, endTime)
 	}
 }
 
