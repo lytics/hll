@@ -29,8 +29,12 @@ func (s *sparse) SizeInBits() uint64 {
 	return uint64(len(s.buf) * 8)
 }
 
+func (s *sparse) SizeInBytes() uint64 {
+	return uint64(len(s.buf))
+}
+
 // Returns a function that can be called repeatedly to yield values from the list.
-func (s *sparse) GetIterator() func() (_ uint64, ok bool) {
+func (s *sparse) GetIterator() u64It {
 	idx := 0
 	var lastDecoded uint64 = 0
 	return func() (uint64, bool) {

@@ -38,18 +38,18 @@ func encodeHash(x uint64, p, pPrime uint) (hashCode uint64) {
 }
 
 // k is an encoded hash.
-func getIndex(k uint64, p, pPrime uint) uint {
+func getIndex(k uint64, p, pPrime uint) uint64 {
 	if k&1 == 1 {
-		index := uint(extractShift(k, 7, p+6)) // erratum from paper, start index is 7, not 6
+		index := extractShift(k, 7, p+6) // erratum from paper, start index is 7, not 6
 		return index
 	} else {
-		index := uint(extractShift(k, 1, p)) // erratum from paper, end index is p, not p+1
+		index := extractShift(k, 1, p) // erratum from paper, end index is p, not p+1
 		return index
 	}
 }
 
 // k is an encoded hash.
-func decodeHash(k uint64, p, pPrime uint) (idx uint, rhoW uint8) {
+func decodeHash(k uint64, p, pPrime uint) (idx uint64, rhoW uint8) {
 	var r uint8
 	if k&1 == 1 {
 		r = uint8(extractShift(k, 1, 6) + uint64(pPrime-p))
@@ -60,80 +60,91 @@ func decodeHash(k uint64, p, pPrime uint) (idx uint, rhoW uint8) {
 }
 
 type mergeElem struct {
-	valid   bool
-	index   uint
+	index   uint64
 	rho     uint8
 	encoded uint64
 }
 
-// tmpSet must be sorted before calling this function. TODO maybe sorting could happen in here?
-func merge(cs *sparse, tmpSet []uint64, p, pPrime uint) *sparse {
-	// sorts tmpSet by index, and not by raw integer value
-	sortHashcodesByIndex(tmpSet, p, pPrime)
+type u64It func() (uint64, bool)
 
-	var sparseElem, tmpElem mergeElem
+type mergeElemIt func() (mergeElem, bool)
 
-	sparseIter := cs.GetIterator()
-	loadSparseElem := func() {
-		sparseElem.encoded, sparseElem.valid = sparseIter()
-		if sparseElem.valid {
-			sparseElem.index, sparseElem.rho = decodeHash(sparseElem.encoded, p, pPrime)
-		}
-	}
-
-	tmpSetOffset := 0
-	loadTmpSetElem := func() {
-		// temp set could contain multiple elements with the same index value
+func makeMergeElemIter(p, pPrime uint, input u64It) mergeElemIt {
+	firstElem := true
+	var lastIndex uint64
+	return func() (mergeElem, bool) {
 		for {
-			if tmpSetOffset >= len(tmpSet) {
-				tmpElem.valid = false
-				return
+			hashCode, ok := input()
+			if !ok {
+				return mergeElem{}, false
 			}
-			lastIndex := tmpElem.index
-			tmpElem.encoded = tmpSet[tmpSetOffset]
-			tmpElem.index, tmpElem.rho = decodeHash(tmpElem.encoded, p, pPrime)
-			tmpElem.valid = true
-			tmpSetOffset++
-			if tmpSetOffset > 0 && tmpElem.index == lastIndex {
+			idx, r := decodeHash(hashCode, p, pPrime)
+			if !firstElem && idx == lastIndex {
+				// In the case where the tmp_set is being merged with the sparse_list, the tmp_set
+				// may contain elements that have the same index value. In this case, they will
+				// have been sorted so the one with the max rho value will come first. We should
+				// discard all dupes after the first.
 				continue
 			}
-			return
+			firstElem = false
+			lastIndex = idx
+			return mergeElem{idx, r, hashCode}, true
 		}
 	}
+}
 
-	loadSparseElem()
-	loadTmpSetElem()
+// The input should be sorted by hashcode.
+func makeU64SliceIt(in []uint64) u64It {
+	idx := 0
+	return func() (uint64, bool) {
+		if idx == len(in) {
+			return 0, false
+		}
+		result := in[idx]
+		idx++
+		return result, true
+	}
+}
 
-	output := newSparse(cs.GetNumElements())
+// Both input iterators must be sorted by hashcode.
+func merge(p, pPrime uint, sizeEst uint64, it1, it2 u64It) *sparse {
 
-	for sparseElem.valid && tmpElem.valid {
+	leftIt := makeMergeElemIter(p, pPrime, it1)
+	rightIt := makeMergeElemIter(p, pPrime, it2)
+
+	left, haveLeft := leftIt()
+	right, haveRight := rightIt()
+
+	output := newSparse(sizeEst)
+
+	for haveLeft && haveRight {
 		var toAppend uint64
-		if sparseElem.index < tmpElem.index {
-			toAppend = sparseElem.encoded
-			loadSparseElem()
-		} else if tmpElem.index < sparseElem.index {
-			toAppend = tmpElem.encoded
-			loadTmpSetElem()
+		if left.index < right.index {
+			toAppend = left.encoded
+			left, haveLeft = leftIt()
+		} else if right.index < left.index {
+			toAppend = right.encoded
+			right, haveRight = rightIt()
 		} else { // The indexes are equal. Keep the one with the highest rho value.
-			if sparseElem.rho > tmpElem.rho {
-				toAppend = sparseElem.encoded
+			if left.rho > right.rho {
+				toAppend = left.encoded
 			} else {
-				toAppend = tmpElem.encoded
+				toAppend = right.encoded
 			}
-			loadTmpSetElem()
-			loadSparseElem()
+			left, haveLeft = leftIt()
+			right, haveRight = rightIt()
 		}
 		output.Add(toAppend)
 	}
 
-	for tmpElem.valid {
-		output.Add(tmpElem.encoded)
-		loadTmpSetElem()
+	for haveRight {
+		output.Add(right.encoded)
+		right, haveRight = rightIt()
 	}
 
-	for sparseElem.valid {
-		output.Add(sparseElem.encoded)
-		loadSparseElem()
+	for haveLeft {
+		output.Add(left.encoded)
+		left, haveLeft = leftIt()
 	}
 
 	return output
@@ -157,6 +168,13 @@ func toNormal(s *sparse, p, pPrime uint) normal {
 }
 
 func maxU8(x, y uint8) uint8 {
+	if x >= y {
+		return x
+	}
+	return y
+}
+
+func maxU64(x, y uint64) uint64 {
 	if x >= y {
 		return x
 	}

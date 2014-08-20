@@ -1,6 +1,7 @@
 package hll
 
 import (
+	"fmt"
 	"math"
 	"sort"
 )
@@ -20,7 +21,7 @@ const (
 // mergeSizeBits and sparseThresholdBits are used when adding values in the sparse case.
 type Hll struct {
 	M                   normal
-	sparseList          *sparse
+	sparseList          *sparse // This will be nil if isSparse==false
 	tempSet             []uint64
 	alpha               float64
 	isSparse            bool
@@ -79,20 +80,77 @@ func (h *Hll) Add(x uint64) {
 	}
 }
 
+// Combine two hyperloglog++ calculations. This allows you to parallelize cardinality estimation:
+// each thread can process a shard of the input, then the results can be merged later to give the
+// cardinality of the entire data set (the union of the shards).
+// The inputs must have the same p and pPrime or this function must panic.
+// The Google paper doesn't give an algorithm for this operation, but its existence is implied.
+func (h *Hll) Combine(other *Hll) {
+	if h.p != other.p || h.pPrime != other.pPrime {
+		panic(fmt.Sprintf("Parameter mismatch: p=%d/%d, pPrime=%d/%d", h.p, other.p, h.pPrime,
+			other.pPrime))
+	}
+
+	other.mergeTmpSetIfAny()
+
+	// If the other Hll is normal (not sparse), then the union will be normal. If this Hll isn't
+	// also normal, do the conversion now.
+	if h.isSparse && !other.isSparse {
+		h.switchToNormal()
+	}
+
+	if h.isSparse && other.isSparse { // Case 1: both inputs are sparse
+		capBytes := maxU64(h.sparseList.SizeInBytes(), other.sparseList.SizeInBytes())
+		h.sparseList = merge(h.p, h.pPrime, capBytes, h.sparseList.GetIterator(),
+			other.sparseList.GetIterator())
+		if h.sparseList.SizeInBits() > h.sparseThresholdBits {
+			h.switchToNormal()
+		}
+	} else if !h.isSparse && !other.isSparse { // Case 2: both inputs are normal
+		for i := uint64(0); i < h.m; i++ {
+			h.M.Set(i, maxU8(h.M.Get(i), other.M.Get(i)))
+		}
+	} else { // Case 3: h is normal, other is sparse
+		otherIt := other.sparseList.GetIterator()
+		for {
+			hashCode, ok := otherIt()
+			if !ok {
+				break
+			}
+			index, r := decodeHash(hashCode, h.p, h.pPrime)
+			h.M.Set(index, maxU8(h.M.Get(index), r))
+		}
+	}
+}
+
 func (h *Hll) addSparse(x uint64) {
 	k := encodeHash(x, h.p, h.pPrime)
 	h.tempSet = append(h.tempSet, k)
 
 	tempSetBits := uint64(len(h.tempSet)) * 64
 	if tempSetBits > h.mergeSizeBits {
-		// temp set sorting is done in merge
-		h.sparseList = merge(h.sparseList, h.tempSet, h.p, h.pPrime)
-		h.tempSet = []uint64{}
-		if h.sparseList.SizeInBits() > h.sparseThresholdBits {
-			h.isSparse = false
-			h.M = toNormal(h.sparseList, h.p, h.pPrime)
-		}
+		h.mergeTmpSetIfAny()
 	}
+}
+
+func (h *Hll) mergeTmpSetIfAny() {
+	if len(h.tempSet) == 0 {
+		return
+	}
+	sortHashcodesByIndex(h.tempSet, h.p, h.pPrime)
+	tmpSetIt := makeU64SliceIt(h.tempSet)
+	sparseIt := h.sparseList.GetIterator()
+	h.sparseList = merge(h.p, h.pPrime, h.sparseList.SizeInBytes(), sparseIt, tmpSetIt)
+	h.tempSet = []uint64{}
+	if h.sparseList.SizeInBits() > h.sparseThresholdBits {
+		h.switchToNormal()
+	}
+}
+
+func (h *Hll) switchToNormal() {
+	h.isSparse = false
+	h.M = toNormal(h.sparseList, h.p, h.pPrime)
+	h.sparseList = nil
 }
 
 func (h *Hll) addNormal(x uint64) {
@@ -115,10 +173,7 @@ func (h *Hll) Cardinality() uint64 {
 
 // Uses linear counting to determine the cardinality for the sparse case.
 func (h *Hll) cardinalityLC() uint64 {
-	if len(h.tempSet) > 0 {
-		h.sparseList = merge(h.sparseList, h.tempSet, h.p, h.pPrime)
-		h.tempSet = []uint64{}
-	}
+	h.mergeTmpSetIfAny()
 	return linearCounting(h.mPrime, h.mPrime-h.sparseList.GetNumElements())
 }
 
