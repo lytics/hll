@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-// Godoc will include this example in the package docs.
 func Example() {
 	const (
 		p           = 14 // Max memory usage is 2^p bytes
