@@ -44,9 +44,10 @@ func TestAddSparse(t *testing.T) {
 			assert.Equal(t, len(h.tempSet), 1)
 		}
 
-		// Should no longer be using the sparse representation after (2^p * 6) / 64 elements have been added
-		if h.sparseList.SizeInBits() > h.sparseThresholdBits {
-			assert.Equal(t, h.isSparse, false)
+		if h.isSparse == false {
+			assert.T(t, h.sparseList == nil)
+			assert.Equal(t, h.tempSet, []uint64{})
+			break
 		}
 	}
 }
