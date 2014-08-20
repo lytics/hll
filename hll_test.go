@@ -60,7 +60,7 @@ func TestCardinality(t *testing.T) {
 	for _, count := range counts {
 		// Create new Hll struct with p = 14 & p' = 25
 		h := NewHll(14, 25)
-
+		// Random uint64 values to test.
 		rands := randUint64s(t, count)
 
 		startTime := time.Now()
@@ -71,6 +71,7 @@ func TestCardinality(t *testing.T) {
 		endTime := time.Since(startTime)
 
 		calculatedError := math.Abs(float64(card)-float64(count)) / float64(count)
+		assert.T(t, calculatedError < 0.15)
 		fmt.Printf("\nActual Cardinality: %d\n Estimated Cardinality: %d\nError: %v\nTime Elapsed: %v\n\n", count, card, calculatedError, endTime)
 	}
 }
