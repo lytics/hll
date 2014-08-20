@@ -11,13 +11,11 @@ const (
 	alpha_64 = 0.709
 )
 
-// M is used for the dense case, and registers the rho values for each hashed index
+// M is used for the dense case, and registers the rho values for each hashed index.
 // sparseList and tempSet are used in the sparse case during aggregation.
-// (dense and sparse specifications are available in their respective go files)
 // alpha is the constant used in the hyperloglog calculation.
-// p is the number of precision bits to use for the dense case and p must be within [4..18]
+// p is the number of precision bits to use for the dense case and p must be within [4..18].
 // p_prime specifies the number of precision bits to use for the sparse case, where p' <= 64.
-// Google recommends that p' be set to either 20 or 25
 // isSparse is a boolean flag that determines when to switch over to the dense case.
 // mergeSizeBits and sparseThresholdBits are used when adding values in the sparse case.
 type Hll struct {
@@ -32,7 +30,8 @@ type Hll struct {
 	sparseThresholdBits uint64
 }
 
-// Initialize a new hyper-log-log struct.
+// Initialize a new hyper-log-log struct based on inputs p and p'.
+// Google recommends that p be set to 14, and p' to equal either 20 or 25.
 func NewHll(p, pPrime uint) *Hll {
 	if p < 4 || p > 18 {
 		panic("p must be in the range [4,18]")
