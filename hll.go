@@ -12,23 +12,16 @@ const (
 	alpha_64 = 0.709
 )
 
-// M is used for the dense case, and registers the rho values for each hashed index.
-// sparseList and tempSet are used in the sparse case during aggregation.
-// alpha is the constant used in the hyperloglog calculation.
-// p is the number of precision bits to use for the dense case and p must be within [4..18].
-// p_prime specifies the number of precision bits to use for the sparse case, where p' <= 64.
-// isSparse is a boolean flag that determines when to switch over to the dense case.
-// mergeSizeBits and sparseThresholdBits are used when adding values in the sparse case.
 type Hll struct {
-	M                   normal
-	sparseList          *sparse // This will be nil if isSparse==false
-	tempSet             []uint64
-	alpha               float64
-	isSparse            bool
-	p, pPrime           uint
-	m, mPrime           uint64
-	mergeSizeBits       uint64
-	sparseThresholdBits uint64
+	bigM                normal   // M is used for the dense case, and registers the rho values for each hashed index.
+	sparseList          *sparse  // This will be nil if isSparse==false. Used for sparse case for aggregation
+	tempSet             []uint64 // used to store values temporarilty for the sparse case
+	alpha               float64  // constant used in cardinality calculation
+	isSparse            bool     // boolean flag that determines when to switch over to the dense case
+	p, pPrime           uint     // precision bits for dense and sparse cases
+	m, mPrime           uint64   // register sizes for dense and sparse cases
+	mergeSizeBits       uint64   // the limit for the size of the temp set
+	sparseThresholdBits uint64   // the limit for the size of the sparseList, indicates when to switch to dense.
 }
 
 // Initialize a new hyper-log-log struct based on inputs p and p'.
@@ -56,7 +49,7 @@ func NewHll(p, pPrime uint) *Hll {
 		h.alpha = 0.7213 / (1.0 + 1.079/float64(h.m))
 	}
 
-	h.M = newNormal(h.m)
+	h.bigM = newNormal(h.m)
 	h.sparseList = newSparse(0)
 	h.tempSet = []uint64{}
 
@@ -108,7 +101,7 @@ func (h *Hll) Combine(other *Hll) {
 		}
 	} else if !h.isSparse && !other.isSparse { // Case 2: both inputs are normal
 		for i := uint64(0); i < h.m; i++ {
-			h.M.Set(i, maxU8(h.M.Get(i), other.M.Get(i)))
+			h.bigM.Set(i, maxU8(h.bigM.Get(i), other.bigM.Get(i)))
 		}
 	} else { // Case 3: h is normal, other is sparse
 		otherIt := other.sparseList.GetIterator()
@@ -118,7 +111,7 @@ func (h *Hll) Combine(other *Hll) {
 				break
 			}
 			index, r := decodeHash(hashCode, h.p, h.pPrime)
-			h.M.Set(index, maxU8(h.M.Get(index), r))
+			h.bigM.Set(index, maxU8(h.bigM.Get(index), r))
 		}
 	}
 }
@@ -149,7 +142,7 @@ func (h *Hll) mergeTmpSetIfAny() {
 
 func (h *Hll) switchToNormal() {
 	h.isSparse = false
-	h.M = toNormal(h.sparseList, h.p, h.pPrime)
+	h.bigM = toNormal(h.sparseList, h.p, h.pPrime)
 	h.sparseList = nil
 }
 
@@ -157,8 +150,8 @@ func (h *Hll) addNormal(x uint64) {
 	offset := (64 - h.p)
 	idx := x >> offset
 	r := rho(x)
-	if r > h.M.Get(idx) {
-		h.M.Set(idx, r)
+	if r > h.bigM.Get(idx) {
+		h.bigM.Set(idx, r)
 	}
 }
 
@@ -184,7 +177,7 @@ func (h *Hll) cardinalityNormal() uint64 {
 
 	// calculate the harmonic mean of the values in the registers.
 	for i := uint64(0); i < h.m; i++ {
-		registerVal := h.M.Get(i)
+		registerVal := h.bigM.Get(i)
 		inverseSum += 1 / math.Pow(2, float64(registerVal))
 		if registerVal == 0 {
 			V++
