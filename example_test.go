@@ -9,7 +9,7 @@ import (
 
 func Example() {
 	const (
-		p           = 14 // Max memory usage is 2^p bytes
+		p           = 14 // Max memory usage is 0.75 * 2^p bytes
 		pPrime      = 25 // Setting this is a bit more complicated, Google recommends 25.
 		numToInsert = 1000000
 	)
