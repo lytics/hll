@@ -1,7 +1,8 @@
 package hll
 
 import (
-	"code.google.com/p/goprotobuf/proto"
+	"bytes"
+	"encoding/binary"
 )
 
 type sparse struct {
@@ -19,8 +20,13 @@ func newSparse(estimatedCap uint64) *sparse {
 
 func (s *sparse) Add(x uint64) {
 	delta := x - s.lastVal
-	deltaBuf := proto.EncodeVarint(delta)
-	s.buf = append(s.buf, deltaBuf...)
+
+	// This slice is not strictly necessary, but it saves a lot of complexity. For now, simplicity
+	// trumps performance in this case.
+	deltaBuf := make([]byte, binary.MaxVarintLen64)
+
+	n := binary.PutUvarint(deltaBuf, delta)
+	s.buf = append(s.buf, deltaBuf[0:n]...)
 	s.lastVal = x
 	s.numElements++
 }
@@ -35,14 +41,14 @@ func (s *sparse) SizeInBytes() uint64 {
 
 // Returns a function that can be called repeatedly to yield values from the list.
 func (s *sparse) GetIterator() u64It {
-	idx := 0
+	// idx := 0
+	rdr := bytes.NewBuffer(s.buf)
 	var lastDecoded uint64 = 0
 	return func() (uint64, bool) {
-		delta, n := proto.DecodeVarint(s.buf[idx:])
-		if n == 0 {
+		delta, err := binary.ReadUvarint(rdr)
+		if err != nil {
 			return 0, false
 		}
-		idx += n
 		returnVal := lastDecoded + delta
 		lastDecoded = returnVal
 		return returnVal, true
