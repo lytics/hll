@@ -3,7 +3,6 @@ package hll
 import (
 	"math"
 	"testing"
-	"time"
 
 	"github.com/bmizerany/assert"
 )
@@ -62,15 +61,15 @@ func TestCardinality(t *testing.T) {
 		// Random uint64 values to test.
 		rands := randUint64s(t, count)
 
-		startTime := time.Now()
+		// startTime := time.Now()
 		for _, randomU64 := range rands {
 			h.Add(randomU64)
 		}
 		card := h.Cardinality()
-		endTime := time.Since(startTime)
 
 		calculatedError := math.Abs(float64(card)-float64(count)) / float64(count)
 		assert.T(t, calculatedError < 0.15)
+		// endTime := time.Since(startTime)
 		//	fmt.Printf("\nActual Cardinality: %d\n Estimated Cardinality: %d\nError: %v\nTime Elapsed: %v\n\n", count, card, calculatedError, endTime)
 	}
 }
