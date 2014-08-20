@@ -8,9 +8,9 @@ const all1s uint64 = 1<<64 - 1
 // startPos and endPos are 0-indexed so they should be in [0,63].
 // startPos should be less than or equal to endPos.
 func onesFromTo(startPos, endPos uint) uint64 {
-	if endPos < startPos {
-		panic("assert") // TODO remove for prod
-	}
+	// if endPos < startPos {
+	// 	panic("assert")
+	// }
 
 	// Generate two overlapping sequences of 1s, and keep the overlap.
 	highOrderOnes := all1s << startPos

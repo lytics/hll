@@ -25,9 +25,9 @@ func (n normal) Get(registerIdx uint64) uint8 {
 func (n normal) Set(registerIdx uint64, val uint8) {
 	byteIdx, startBit, numInSecondByte := bitPosn(registerIdx)
 
-	if val&0x3f != val {
-		panic("register values should only have their lower 6 bits set.") // TODO remove for prod
-	}
+	// if val&0x3f != val {
+	// 	panic("register values should only have their lower 6 bits set.") // TODO remove for prod
+	// }
 
 	b1 := n[byteIdx]
 	b1 = b1 &^ uint8(onesFromTo(startBit, startBit+6-1)) // Clear bits holding this register.
