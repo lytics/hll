@@ -14,7 +14,7 @@ func Example() {
 		numToInsert = 1000000
 	)
 
-	// You can use any hash function that you want. Here we use SHA1 then extract 8 bytes as uint64.
+	// You can use any good hash function, truncated to 8 bytes to fit in a uint64.
 	hashU64 := func(s string) uint64 {
 		sha1Hash := sha1.Sum([]byte(s))
 		return binary.LittleEndian.Uint64(sha1Hash[0:8])

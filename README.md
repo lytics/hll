@@ -13,8 +13,7 @@ Not all algorithms are provided in the paper, but we've tried our best to be tru
 intent when writing the omitted algorithms. We're not trying to be creative, we're just
 implementing the algorithm described in the paper as directly as possible.
 
-The HyperLogLog++ paper is available at 
-[here](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/40671.pdf)
+The HyperLogLog++ paper is available [here](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/40671.pdf)
 
 Instructions
 ------------

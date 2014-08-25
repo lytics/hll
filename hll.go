@@ -63,8 +63,11 @@ func NewHll(p, pPrime uint) *Hll {
 	return h
 }
 
-// Aggregation step. The inputs should be hashes, which should be roughly uniformly
-// distributed (any good hash function will do).
+// Add takes a hash and updates the cardinality estimation data structures.
+//
+// The input should be a hash of whatever type you're estimating of. For example, if you're
+// estimating the cardinality of a stream of strings, you'd pass the hash of each string to this
+// function.
 func (h *Hll) Add(x uint64) {
 	if h.isSparse {
 		h.addSparse(x)
@@ -73,11 +76,18 @@ func (h *Hll) Add(x uint64) {
 	}
 }
 
-// Combine two hyperloglog++ calculations. This allows you to parallelize cardinality estimation:
-// each thread can process a shard of the input, then the results can be merged later to give the
-// cardinality of the entire data set (the union of the shards).
-// The inputs must have the same p and pPrime or this function must panic.
-// The Google paper doesn't give an algorithm for this operation, but its existence is implied.
+// Combine merges two HyperLogLog++ calculations. This allows you to parallelize cardinality
+// estimation: each thread can process a shard of the input, then the results can be merged later to
+// give the cardinality of the entire data set (the union of the shards).
+//
+// WARNING: The "other" parameter may be mutated during this call! It may be converted from a sparse
+// to dense representation, which will not affect its correctness but may affect its space usage
+// and precision.
+//
+// The inputs must have the same p and pPrime or this function will panic.
+// The Google paper doesn't give an algorithm for this operation, but its existence is implied, and
+// the ability to do this combine operation is one of the main benefits of using a HyperLogLog-type
+// algorithm in the first place.
 func (h *Hll) Combine(other *Hll) {
 	if h.p != other.p || h.pPrime != other.pPrime {
 		panic(fmt.Sprintf("Parameter mismatch: p=%d/%d, pPrime=%d/%d", h.p, other.p, h.pPrime,
@@ -155,7 +165,7 @@ func (h *Hll) addNormal(x uint64) {
 	}
 }
 
-// Returns Cardinality Estimate according to current state (sparse or normal).
+// Returns the estimated cardinality (the number of unique inputs seen so far).
 func (h *Hll) Cardinality() uint64 {
 	if h.isSparse {
 		return h.cardinalityLC()
