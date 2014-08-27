@@ -76,13 +76,13 @@ func (h *Hll) Add(x uint64) {
 	}
 }
 
-// Combine merges two HyperLogLog++ calculations. This allows you to parallelize cardinality
+// Combine() merges two HyperLogLog++ calculations. This allows you to parallelize cardinality
 // estimation: each thread can process a shard of the input, then the results can be merged later to
 // give the cardinality of the entire data set (the union of the shards).
 //
 // WARNING: The "other" parameter may be mutated during this call! It may be converted from a sparse
-// to dense representation, which will not affect its correctness but may affect its space usage
-// and precision.
+// to dense representation, which may affect its space usage and precision. This is a deliberate
+// design decision that helps to minimize memory consumption.
 //
 // The inputs must have the same p and pPrime or this function will panic.
 // The Google paper doesn't give an algorithm for this operation, but its existence is implied, and
