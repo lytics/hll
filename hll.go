@@ -49,7 +49,6 @@ func NewHll(p, pPrime uint) *Hll {
 		h.alpha = 0.7213 / (1.0 + 1.079/float64(h.m))
 	}
 
-	h.bigM = newNormal(h.m)
 	h.sparseList = newSparse(0)
 	h.tempSet = []uint64{}
 

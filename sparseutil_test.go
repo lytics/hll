@@ -57,32 +57,6 @@ func TestMerge(t *testing.T) {
 	const p = 12
 	const pPrime = 25
 
-	// encodeHashes := func(vals []uint64) []uint64 {
-	// 	s := make([]uint64, len(vals))
-	// 	for i, v := range vals {
-	// 		encoded := encodeHash(v, p, pPrime)
-	// 		s[i] = encoded
-	// 	}
-	// 	sortHashcodesByIndex([]uint64(s), p, pPrime)
-	// 	// fmt.Printf("encodeHashes: returning %x\n", s)
-	// 	return s
-	// }
-
-	// encodeCompressed := func(vals []uint64) *sparse {
-	// 	cs := newSparse(0)
-	// 	var encoded_hashes []uint64
-	// 	for _, v := range vals {
-	// 		encoded := encodeHash(v, p, pPrime)
-	// 		encoded_hashes = append(encoded_hashes, encoded)
-	// 	}
-	// 	sortHashcodesByIndex(encoded_hashes, p, pPrime)
-	// 	deduped := Dedupe(encoded_hashes, p, pPrime)
-	// 	for _, hash := range deduped {
-	// 		cs.Add(hash)
-	// 	}
-	// 	return cs
-	// }
-
 	convertToHashCodes := func(xs []uint64) {
 		for i, x := range xs {
 			xs[i] = encodeHash(x, p, pPrime)
