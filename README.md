@@ -11,7 +11,8 @@ algorithm by using less space, improving accuracy, and correcting bias.
 This code is a translation of the pseudocode contained in Figures 6 and 7 of the Google paper.
 Not all algorithms are provided in the paper, but we've tried our best to be true to the authors'
 intent when writing the omitted algorithms. We're not trying to be creative, we're just
-implementing the algorithm described in the paper as directly as possible.
+implementing the algorithm described in the paper as directly as possible. Our deviations are 
+described [here](deviations.md).
 
 The HyperLogLog++ paper is available [here](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/40671.pdf)
 
@@ -19,3 +20,4 @@ Instructions
 ------------
 
 See the [docs](http://godoc.org/github.com/lytics/hll).
+
