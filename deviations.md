@@ -8,25 +8,8 @@ kept to a minimum. Here they are.
 Corrections
 -----------
 In the version of the paper that we're using, there are two off-by-one errors in GetIndex() in
-Figure 7. Stefan Heule, one of the authors of the upstream paper, confirmed this by email, and sent
-a corrected version:
-
-
-	On Wed, Aug 27, 2014 at 12:41 AM, Stefan Heule wrote:
-	... I looked at Figure 7 again and I agree, we made two off-by-one errors.  The correct
-	implementation should be:
-
-	Define GetIndex(k,p)
-	  if <k_0> = 1 then
-	    return <k_{p+6},...,.k_7>
-	  else
-	    return <k_p,...,k_1>
-	  end if
-
-	This implementation will now correctly return p bits, whereas the one we give in the paper
-	returns p+1 bits (in both cases!), which is wrong.
-
-This corrected algorithm is what we implemented.
+Figure 7. We pointed these out to the authors, and they updated the appendix at http://goo.gl/iU8Ig
+with a corrected algorithm. We're using the updated version.
 
 Additions
 ---------
