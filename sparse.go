@@ -99,25 +99,14 @@ func snappyB64(in []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// Go requires annoying contortions to handle base64'ing buffers whose length is not a multiple
-	// of 4.
-	s := make([]byte, 0, base64.URLEncoding.EncodedLen(len(compressed))+2)
-	base64Buf := bytes.NewBuffer(s)
-	b64Enc := base64.NewEncoder(base64.URLEncoding, base64Buf)
-	_, err = b64Enc.Write(compressed)
-	if err != nil {
-		return nil, err
-	}
-	if err := b64Enc.Close(); err != nil {
-		return nil, err
-	}
-	return base64Buf.Bytes(), nil
+	outBuf := make([]byte, base64.URLEncoding.EncodedLen(len(compressed)))
+	base64.URLEncoding.Encode(outBuf, compressed)
+	return outBuf, nil
 }
 
 // The inverse of snappyB64.
 func unsnappyB64(in []byte) ([]byte, error) {
-	unBase64edBufLen := base64.URLEncoding.DecodedLen(len(in))
-	unBase64ed := make([]byte, unBase64edBufLen)
+	unBase64ed := make([]byte, base64.URLEncoding.DecodedLen(len(in)))
 	n, err := base64.URLEncoding.Decode(unBase64ed, in)
 	if err != nil {
 		return nil, err
@@ -128,7 +117,8 @@ func unsnappyB64(in []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// The snappy library returns nil when the output length is zero. Fix it.
+	// The snappy library returns nil when the output length is zero. Fix it now.
+	// I filed this bug upstream: https://code.google.com/p/snappy-go/issues/detail?id=6
 	if uncompressed == nil {
 		uncompressed = []byte{}
 	}
