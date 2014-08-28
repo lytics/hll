@@ -136,7 +136,7 @@ func (h *Hll) addSparse(x uint64) {
 }
 
 func (h *Hll) mergeTmpSetIfAny() {
-	if len(h.tempSet) == 0 {
+	if !h.isSparse || len(h.tempSet) == 0 {
 		return
 	}
 	sortHashcodesByIndex(h.tempSet, h.p, h.pPrime)
@@ -166,6 +166,7 @@ func (h *Hll) addNormal(x uint64) {
 
 // Returns the estimated cardinality (the number of unique inputs seen so far).
 func (h *Hll) Cardinality() uint64 {
+	h.mergeTmpSetIfAny()
 	if h.isSparse {
 		return h.cardinalityLC()
 	} else {
@@ -175,7 +176,6 @@ func (h *Hll) Cardinality() uint64 {
 
 // Uses linear counting to determine the cardinality for the sparse case.
 func (h *Hll) cardinalityLC() uint64 {
-	h.mergeTmpSetIfAny()
 	return linearCounting(h.mPrime, h.mPrime-h.sparseList.GetNumElements())
 }
 
