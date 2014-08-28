@@ -167,7 +167,11 @@ func (h *Hll) addNormal(x uint64) {
 
 // Returns the estimated cardinality (the number of unique inputs seen so far).
 func (h *Hll) Cardinality() uint64 {
+	// This step doesn't appear in the upstream paper, but it allows us to interleave adding new
+	// inputs with cardinality calculations. If we didn't do this step, there's a subtle edge case
+	// where the sparse list could grow without being converted into the dense representation.
 	h.mergeTmpSetIfAny()
+
 	if h.isSparse {
 		return h.cardinalityLC()
 	} else {
