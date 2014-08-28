@@ -1,6 +1,7 @@
 package hll
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -212,6 +213,46 @@ func (h *Hll) cardinalityNormal() uint64 {
 	} else {
 		return roundFloatToUint64(e2)
 	}
+}
+
+// When marshalling an Hll to JSON, we only marshal a subset of its fields.
+type jsonableHll struct {
+	BigM       *normal `json:"M,omitempty"`
+	SparseList *sparse `json:"s,omitempty"`
+	P          uint    `json:"p"`
+	PPrime     uint    `json:"pp"`
+}
+
+func (h *Hll) MarshalJSON() ([]byte, error) {
+	// Combine tmpSet with sparse list. This saves serializing the tmpSet, which saves space.
+	h.mergeTmpSetIfAny()
+
+	bigM := &h.bigM
+	if len(*bigM) == 0 {
+		bigM = nil
+	}
+
+	return json.Marshal(&jsonableHll{bigM, h.sparseList, h.p, h.pPrime})
+}
+
+func (h *Hll) UnmarshalJSON(buf []byte) error {
+	j := jsonableHll{}
+
+	if err := json.Unmarshal(buf, &j); err != nil {
+		return err
+	}
+
+	// Copy field values from the jsonable model to the real Hll struct.
+	*h = *NewHll(j.P, j.PPrime)
+	h.sparseList = nil
+	h.bigM = nil
+
+	h.sparseList = j.SparseList
+	if j.BigM != nil {
+		h.bigM = *j.BigM
+	}
+	h.isSparse = (h.sparseList != nil)
+	return nil
 }
 
 // Returns linear counting cardinality estimate.

@@ -1,5 +1,9 @@
 package hll
 
+import (
+	"fmt"
+)
+
 type normal []byte
 
 func newNormal(numRegisters uint64) normal {
@@ -49,6 +53,37 @@ func (n normal) Size() int {
 	return len(n) / 6
 }
 
+func (n *normal) MarshalJSON() ([]byte, error) {
+	compressed, err := snappyB64(*n)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrap the base64 in quotes so it's a valid JSON string.
+	buf := make([]byte, len(compressed)+2)
+	buf[0] = '"'
+	copy(buf[1:], compressed)
+	buf[len(buf)-1] = '"'
+
+	return buf, nil
+}
+
+func (n *normal) UnmarshalJSON(buf []byte) error {
+	if len(buf) < 2 {
+		return fmt.Errorf("A marshaled \"normal\" should be at least two bytes, including quotes")
+	}
+	buf = buf[1 : len(buf)-1] // Remove the quotes from the JSON string
+
+	uncompressed, err := unsnappyB64(buf)
+	if err != nil {
+		return err
+	}
+
+	*n = uncompressed
+	return nil
+}
+
+// Given a register number, returns the bit position where it can be found in the byte slice.
 func bitPosn(registerIdx uint64) (byteIdx uint64, startBit, numInSecondByte uint) {
 	bitIdx := registerIdx * 6
 

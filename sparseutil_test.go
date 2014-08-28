@@ -87,13 +87,16 @@ func TestMerge(t *testing.T) {
 }
 
 func randUint64s(t *testing.T, count int) []uint64 {
-	buf := make([]byte, 8)
 	output := make([]uint64, count)
 	for i := 0; i < count; i++ {
-		n, err := rand.Read(buf)
-		assert.T(t, err == nil && n == 8, err, n)
-		// fmt.Printf("random buf: %x\n", buf)
-		output[i] = binary.LittleEndian.Uint64(buf)
+		output[i] = randUint64(t)
 	}
 	return output
+}
+
+func randUint64(t *testing.T) uint64 {
+	buf := make([]byte, 8)
+	n, err := rand.Read(buf)
+	assert.T(t, err == nil && n == 8, err, n)
+	return binary.LittleEndian.Uint64(buf)
 }
