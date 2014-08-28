@@ -20,6 +20,7 @@ func TestAddNormal(t *testing.T) {
 	assert.Equal(t, register2, register)
 	assert.T(t, rho(value) > rho(value2))
 
+	h.switchToNormal()
 	h.addNormal(value)
 	h.addNormal(value2)
 	assert.Equal(t, h.bigM.Get(uint64(register)), rho(value))

@@ -1,6 +1,7 @@
 package hll
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -49,7 +50,6 @@ func NewHll(p, pPrime uint) *Hll {
 		h.alpha = 0.7213 / (1.0 + 1.079/float64(h.m))
 	}
 
-	h.bigM = newNormal(h.m)
 	h.sparseList = newSparse(0)
 	h.tempSet = []uint64{}
 
@@ -137,7 +137,7 @@ func (h *Hll) addSparse(x uint64) {
 }
 
 func (h *Hll) mergeTmpSetIfAny() {
-	if len(h.tempSet) == 0 {
+	if !h.isSparse || len(h.tempSet) == 0 {
 		return
 	}
 	sortHashcodesByIndex(h.tempSet, h.p, h.pPrime)
@@ -167,6 +167,7 @@ func (h *Hll) addNormal(x uint64) {
 
 // Returns the estimated cardinality (the number of unique inputs seen so far).
 func (h *Hll) Cardinality() uint64 {
+	h.mergeTmpSetIfAny()
 	if h.isSparse {
 		return h.cardinalityLC()
 	} else {
@@ -176,7 +177,6 @@ func (h *Hll) Cardinality() uint64 {
 
 // Uses linear counting to determine the cardinality for the sparse case.
 func (h *Hll) cardinalityLC() uint64 {
-	h.mergeTmpSetIfAny()
 	return linearCounting(h.mPrime, h.mPrime-h.sparseList.GetNumElements())
 }
 
@@ -213,6 +213,46 @@ func (h *Hll) cardinalityNormal() uint64 {
 	} else {
 		return roundFloatToUint64(e2)
 	}
+}
+
+// When marshalling an Hll to JSON, we only marshal a subset of its fields.
+type jsonableHll struct {
+	BigM       *normal `json:"M,omitempty"`
+	SparseList *sparse `json:"s,omitempty"`
+	P          uint    `json:"p"`
+	PPrime     uint    `json:"pp"`
+}
+
+func (h *Hll) MarshalJSON() ([]byte, error) {
+	// Combine tmpSet with sparse list. This saves serializing the tmpSet, which saves space.
+	h.mergeTmpSetIfAny()
+
+	bigM := &h.bigM
+	if len(*bigM) == 0 {
+		bigM = nil
+	}
+
+	return json.Marshal(&jsonableHll{bigM, h.sparseList, h.p, h.pPrime})
+}
+
+func (h *Hll) UnmarshalJSON(buf []byte) error {
+	j := jsonableHll{}
+
+	if err := json.Unmarshal(buf, &j); err != nil {
+		return err
+	}
+
+	// Copy field values from the jsonable model to the real Hll struct.
+	*h = *NewHll(j.P, j.PPrime)
+	h.sparseList = nil
+	h.bigM = nil
+
+	h.sparseList = j.SparseList
+	if j.BigM != nil {
+		h.bigM = *j.BigM
+	}
+	h.isSparse = (h.sparseList != nil)
+	return nil
 }
 
 // Returns linear counting cardinality estimate.
