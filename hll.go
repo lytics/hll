@@ -227,6 +227,7 @@ type jsonableHll struct {
 	PPrime     uint    `json:"pp"`
 }
 
+// Convert the Hll struct into JSON.
 func (h *Hll) MarshalJSON() ([]byte, error) {
 	// Combine tmpSet with sparse list. This saves serializing the tmpSet, which saves space.
 	h.mergeTmpSetIfAny()
@@ -239,6 +240,7 @@ func (h *Hll) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&jsonableHll{bigM, h.sparseList, h.p, h.pPrime})
 }
 
+// Unmarshals JSON byte-array into a Hll struct.
 func (h *Hll) UnmarshalJSON(buf []byte) error {
 	j := jsonableHll{}
 
