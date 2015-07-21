@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 
-	"github.com/golang/snappy/snappy"
+	"github.com/golang/snappy"
 )
 
 type sparse struct {
@@ -94,11 +94,7 @@ func (s *sparse) UnmarshalJSON(buf []byte) error {
 
 // Compress the input using snapp and encode the result using URL-safe base64.
 func snappyB64(in []byte) ([]byte, error) {
-	compressed, err := snappy.Encode(nil, in)
-	if err != nil {
-		return nil, err
-	}
-
+	compressed := snappy.Encode(nil, in)
 	outBuf := make([]byte, base64.URLEncoding.EncodedLen(len(compressed)))
 	base64.URLEncoding.Encode(outBuf, compressed)
 	return outBuf, nil
