@@ -1,0 +1,14 @@
+package hll;
+
+message HllPb {
+	message sparse {
+		optional bytes buf = 1;
+		required uint64 lastVal	= 2;
+		required uint64 numElements =3;
+	}
+
+	required int32 p = 1;
+	required int32 pp = 2;
+	optional bytes M = 3;
+	optional sparse s = 4;
+}

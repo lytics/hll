@@ -38,7 +38,6 @@ func TestMarshalRoundTrip(t *testing.T) {
 
 			h.Add(randUint64(t))
 		}
-
 		assert.T(t, !h.isSparse) // Ensure we stored enough to use the dense representation.
 	}
 }
@@ -99,6 +98,40 @@ func TestMarshalOmit(t *testing.T) {
 	}
 
 	check() // This checks the dense case.
+}
+
+func TestMarshalPbRoundtrip(t *testing.T) {
+	const p, pPrime = 14, 25
+
+	testCases := []struct {
+		p, pPrime uint
+	}{
+		{5, 10},
+		{10, 25},
+		{15, 25},
+	}
+
+	for _, testCase := range testCases {
+		h := NewHll(testCase.p, testCase.pPrime)
+		for i := uint64(0); i <= 1e5; i++ {
+			if i%5000 == 0 {
+				// Every N elements, do a round-trip marshal and unmarshal and make sure cardinality is
+				// preserved.
+				pbBuf, err := h.MarshalPb()
+				assert.Equalf(t, nil, err, "%v", err)
+
+				rt := &Hll{}
+				err = rt.UnmarshalPb(pbBuf)
+				assert.Equalf(t, nil, err, "%v", err)
+
+				assert.Equal(t, rt.Cardinality(), h.Cardinality())
+			}
+
+			h.Add(randUint64(t))
+		}
+
+		assert.T(t, !h.isSparse) // Ensure we stored enough to use the dense representation.
+	}
 }
 
 func TestCompression(t *testing.T) {
