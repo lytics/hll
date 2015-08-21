@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 const (
@@ -255,6 +257,52 @@ func (h *Hll) UnmarshalJSON(buf []byte) error {
 	if j.BigM != nil {
 		h.bigM = *j.BigM
 	}
+	h.isSparse = (h.sparseList != nil)
+	return nil
+}
+
+func (h *Hll) MarshalPb() ([]byte, error) {
+	h.mergeTmpSetIfAny()
+
+	p, pp := int32(h.p), int32(h.pPrime)
+
+	pb := &HllPb{}
+	pb.P = &p
+	pb.Pp = &pp
+	pb.M = h.bigM
+	if h.sparseList != nil {
+		pb.S = &HllPbSparse{
+			Buf:         h.sparseList.buf,
+			LastVal:     &h.sparseList.lastVal,
+			NumElements: &h.sparseList.numElements,
+		}
+	}
+
+	return proto.Marshal(pb)
+}
+
+func (h *Hll) UnmarshalPb(buf []byte) error {
+	pb := &HllPb{}
+	err := proto.Unmarshal(buf, pb)
+	if err != nil {
+		return err
+	}
+
+	p, pp := uint(*pb.P), uint(*pb.Pp)
+
+	// Copy field values from the protobuf omdel to the real Hll struct.
+
+	*h = *NewHll(p, pp)
+	h.sparseList = nil
+	h.bigM = nil
+
+	if pb.S != nil {
+		h.sparseList = &sparse{pb.S.Buf, *pb.S.LastVal, *pb.S.NumElements}
+	}
+	if pb.M != nil {
+		h.bigM = pb.M
+	}
+
 	h.isSparse = (h.sparseList != nil)
 	return nil
 }
