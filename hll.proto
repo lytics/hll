@@ -1,6 +1,6 @@
 package hll;
 
-message hllPb {
+message HllPb {
 	message sparse {
 		optional bytes buf = 1;
 		required uint64 lastVal	= 2;
