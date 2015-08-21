@@ -288,9 +288,8 @@ func (h *Hll) UnmarshalPb(buf []byte) error {
 		return err
 	}
 
-	p, pp := uint(*pb.P), uint(*pb.Pp)
-
 	// Copy field values from the protobuf omdel to the real Hll struct.
+	p, pp := uint(*pb.P), uint(*pb.Pp)
 
 	*h = *NewHll(p, pp)
 	h.sparseList = nil
