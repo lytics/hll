@@ -316,6 +316,15 @@ func (h *Hll) UnmarshalPb(buf []byte) error {
 	return nil
 }
 
+// custom gob encoder and decoders
+func (h *Hll) GobEncode() ([]byte, error) {
+	return h.MarshalJSON()
+}
+
+func (h *Hll) GobDecode(data []byte) error {
+	return h.UnmarshalJSON(data)
+}
+
 // Returns linear counting cardinality estimate.
 func linearCounting(m, v uint64) uint64 {
 	count := float64(m) * math.Log(float64(m)/float64(v))
