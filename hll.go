@@ -15,6 +15,16 @@ const (
 	alpha_64 = 0.709
 )
 
+// In order to mitigate the computational expense of math.Pow,
+// we use a lookup table to calculate the harmonic mean of the values in the registers
+var lookupTable [256]float64
+
+func init() {
+	for i := 0; i < 256; i++ {
+		lookupTable[i] = math.Pow(2, float64(i))
+	}
+}
+
 type Hll struct {
 	bigM                normal   // M is used for the dense case, and registers the rho values for each hashed index.
 	sparseList          *sparse  // This will be nil if isSparse==false. Used for sparse case for aggregation
@@ -194,7 +204,7 @@ func (h *Hll) cardinalityNormal() uint64 {
 	// calculate the harmonic mean of the values in the registers.
 	for i := uint64(0); i < h.m; i++ {
 		registerVal := h.bigM.Get(i)
-		inverseSum += 1 / math.Pow(2, float64(registerVal))
+		inverseSum += 1 / lookupTable[registerVal]
 		if registerVal == 0 {
 			V++
 		}
