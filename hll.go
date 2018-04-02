@@ -37,6 +37,24 @@ type Hll struct {
 	sparseThresholdBits uint64   // the limit for the size of the sparseList, indicates when to switch to dense.
 }
 
+func (h *Hll) Copy() *Hll {
+	tempset := make([]uint64, len(h.tempSet))
+	copy(tempset, h.tempSet)
+	return &Hll{
+		bigM:                h.bigM.Copy(),
+		sparseList:          h.sparseList.Copy(),
+		tempSet:             tempset,
+		alpha:               h.alpha,
+		isSparse:            h.isSparse,
+		p:                   h.p,
+		pPrime:              h.pPrime,
+		m:                   h.m,
+		mPrime:              h.mPrime,
+		mergeSizeBits:       h.mergeSizeBits,
+		sparseThresholdBits: h.sparseThresholdBits,
+	}
+}
+
 // Initialize a new hyper-log-log struct based on inputs p and p'.
 // Google recommends that p be set to 14, and p' to equal either 20 or 25.
 func NewHll(p, pPrime uint) *Hll {
