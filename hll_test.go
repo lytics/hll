@@ -51,6 +51,32 @@ func TestAddSparse(t *testing.T) {
 	}
 }
 
+// Test copying the HyperLogLog++
+func TestCopy(t *testing.T) {
+	h := NewHll(14, 25)
+
+	count := 1000
+	rands := randUint64s(t, count)
+	for _, randomU64 := range rands {
+		h.Add(randomU64)
+	}
+
+	card := h.Cardinality()
+	hCopy := h.Copy()
+	copyCard := hCopy.Cardinality()
+	assert.Equal(t, card, copyCard)
+
+	rands = randUint64s(t, count)
+	for _, randomU64 := range rands {
+		h.Add(randomU64)
+		hCopy.Add(randomU64)
+	}
+
+	card = h.Cardinality()
+	copyCard = hCopy.Cardinality()
+	assert.Equal(t, card, copyCard)
+}
+
 // Tests cardinality accuracy with varying number of distinct uint64 inputs
 func TestCardinality(t *testing.T) {
 	// number of random values to estimate cardinalities for

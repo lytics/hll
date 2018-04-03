@@ -22,6 +22,16 @@ func newSparse(estimatedCap uint64) *sparse {
 	}
 }
 
+func (s *sparse) Copy() *sparse {
+	buf := make([]byte, len(s.buf))
+	copy(buf, s.buf)
+	return &sparse{
+		buf:         buf,
+		lastVal:     s.lastVal,
+		numElements: s.numElements,
+	}
+}
+
 func (s *sparse) Add(x uint64) {
 	delta := x - s.lastVal
 

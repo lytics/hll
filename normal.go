@@ -53,6 +53,12 @@ func (n normal) Size() int {
 	return len(n) / 6
 }
 
+func (n normal) Copy() normal {
+	cp := make(normal, len(n))
+	copy(cp, n)
+	return cp
+}
+
 func (n *normal) MarshalJSON() ([]byte, error) {
 	compressed, err := snappyB64(*n)
 	if err != nil {
