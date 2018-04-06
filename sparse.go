@@ -23,6 +23,9 @@ func newSparse(estimatedCap uint64) *sparse {
 }
 
 func (s *sparse) Copy() *sparse {
+	if s == nil {
+		return nil
+	}
 	buf := make([]byte, len(s.buf))
 	copy(buf, s.buf)
 	return &sparse{
